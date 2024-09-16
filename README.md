@@ -13,8 +13,8 @@ A Visualization of Seismic Data in SEGY. A Useful project for a quick view in Gr
 <img src="plots/SEIS.png" alt="img1">
 > A plot of Seismic Data. 
 
-<img src="plots/filter.png" alt="img2">
-<img src="plots/filter_2.png" alt="img1">
+<img src="plots/Filter.png" alt="img2">
+<img src="plots/Filter_2.png" alt="img1">
 > A filter of Wavelet views. 
 
 
