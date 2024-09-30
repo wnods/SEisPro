@@ -1,6 +1,5 @@
 import os
 import sys
-import utm
 import numpy as np
 import matplotlib.pyplot as plt
 import obspy
@@ -17,10 +16,17 @@ from matplotlib.colors import Normalize
 from obspy.imaging.spectrogram import spectrogram
 from matplotlib.colorbar import ColorbarBase
 from matplotlib.colors import Normalize
+from rich import print
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.progress import track
+from rich.text import Text
 
 # from processing import FkPro
 # from routines import util
 
+console = Console()
 
 def list_segy_files_with_sizes(directory):
     segy_files = [
@@ -38,16 +44,26 @@ def get_segy_file_info(file_path):
 def generate_directory_header(directory):
     segy_files = list_segy_files_with_sizes(directory)
     
-    print(f"Diretório: {directory}")
-    print("Conteúdo:")
+    console.print(Panel(f"[bold blue]Diretório: {directory}", title="Informação do Diretório", title_align="left"))
+    
+    table = Table(title="Conteúdo do Diretório SEGY")
+    table.add_column("Arquivo", justify="left", style="cyan", no_wrap=True)
+    table.add_column("Tamanho (MB)", justify="center", style="green")
+    table.add_column("Número de Traces", justify="center", style="magenta")
+    table.add_column("Amostras por Trace", justify="center", style="yellow")
 
     for filename, size in segy_files:
         file_path = os.path.join(directory, filename)
         num_traces, num_samples = get_segy_file_info(file_path)
 
-        print(f"├── {filename} ({size:.2f} MB)")
-        print(f"    ├── Número de Traces: {num_traces}")
-        print(f"    └── Amostras por Trace: {num_samples}")
+        table.add_row(
+            filename,
+            f"{size:.2f}",
+            str(num_traces),
+            str(num_samples)
+        )
+    
+    console.print(table)
 
 def list_segy_files(directory):
     segy_files = [f for f in os.listdir(directory) if f.endswith('.SEGY') or f.endswith('.SGY')]
@@ -67,7 +83,7 @@ def plot_seismic_collage_with_spectrogram(data, traces_to_plot=[0, 1, 2], cmap='
 
     max_amplitude = np.max(np.abs(data))
     for i, trace in enumerate(data):
-        axs[0, 0].plot(trace / max_amplitude + i, t, color='darkblue', lw=1.5)
+        axs[0, 0].plot(trace / max_amplitude + i, t, color='black', lw=1.0)
     axs[0, 0].invert_yaxis()
     axs[0, 0].set_title("Visualizador da Onda Sísmica", fontsize=12, fontweight='bold')
     axs[0, 0].set_xlabel("Traços")
@@ -101,13 +117,7 @@ def plot_seismic_collage_with_spectrogram(data, traces_to_plot=[0, 1, 2], cmap='
     plt.savefig(output_file)
     plt.show()
 
-
-    #---------------- Configurações do processamento --------------------#
-
 def plot_filtered_data_with_envelope(data, sample_rate, freqmin=1, freqmax=3, time_window=(80, 90)):
-    """
-    Plota os dados filtrados com a envoltória de amplitude.
-    """
     data_filtered = obspy.signal.filter.bandpass(data, freqmin=freqmin, freqmax=freqmax, df=sample_rate, corners=2, zerophase=True)
     data_envelope = obspy.signal.filter.envelope(data_filtered)
 
@@ -130,13 +140,13 @@ def choose_segy_file_with_header(directory):
     if not segy_files:
         raise FileNotFoundError(f"Nenhum arquivo SEGY encontrado no diretório: {directory}")
 
-    print("\nArquivos SEGY encontrados (em ordem alfabética):")
+    console.print("\n[bold blue]Arquivos SEGY encontrados (em ordem alfabética):[/bold blue]")
     for idx, (filename, _) in enumerate(segy_files):
-        print(f"{idx}: {filename}")
+        console.print(f"{idx}: [green]{filename}[/green]")
 
     while True:
         try:
-            file_idx = int(input("├── Selecione o número do arquivo SEGY para carregar: "))
+            file_idx = int(input("Selecione o número do arquivo SEGY para carregar: "))
             if file_idx < 0 or file_idx >= len(segy_files):
                 raise IndexError("Índice de arquivo SEGY inválido.")
             return os.path.join(directory, segy_files[file_idx][0])
@@ -146,9 +156,9 @@ def choose_segy_file_with_header(directory):
             print(e)
 
 def ask_plot_choice():
-    print("Escolha o tipo de gráfico para plotar:")
-    print("1: Colagem de gráficos sísmicos")
-    print("2: Gráfico de Dados Filtrados com Envoltória")
+    console.print(Panel("Escolha o tipo de gráfico para plotar:", title="Opções de Gráfico"))
+    console.print("1: Colagem de gráficos sísmicos")
+    console.print("2: Gráfico de Dados Filtrados com Envoltória")
     
     while True:
         try:
@@ -160,28 +170,25 @@ def ask_plot_choice():
             print(e)
 
 def ask_plot_parameters():
-    cmap = input("  ├── Digite o cmap para o gráfico. ENTER para continuar com o Padrão: ") or 'inferno'
+    cmap = input("Digite o cmap para o gráfico. ENTER para continuar com o Padrão: ") or 'gray'
     try:
-        fs = float(input("    ├── Digite o fator de amostragem (Fs). ENTER para continuar com o Padrão:(rtn= 24)") or 24.0)
-        nfft = int(input("        ├── Digite o tamanho da janela de FFT (NFFT). ENTER para continuar com o Padrão:(rtn= 2000) ") or 2000)
-        noverlap = int(input("           ├── Digite o valor de sobreposição (noverlap). ENTER para continuar com o Padrão:(rtn= 700)") or 700)
+        fs = float(input("Digite o fator de amostragem (Fs). ENTER para continuar com o Padrão: ") or 24.0)
+        nfft = int(input("Digite o tamanho da janela de FFT (NFFT). ENTER para continuar com o Padrão: ") or 2000)
+        noverlap = int(input("Digite o valor de sobreposição (noverlap). ENTER para continuar com o Padrão: ") or 700)
     except ValueError:
-        print("Valores inválidos fornecidos, usando padrões.")
+        console.print("[bold red]Valores inválidos fornecidos, usando padrões.[/bold red]")
         fs, nfft, noverlap = 24.0, 2000, 700
 
     return cmap, fs, nfft, noverlap
 
 def ask_filter_parameters():
-    """
-    Permite ao usuário definir as frequências de corte do filtro e o intervalo de tempo do gráfico.
-    """
     try:
-        freqmin = float(input("├── Digite a frequência mínima para o filtro (rtn= 10 Hz): ") or 10)
-        freqmax = float(input("├── Digite a frequência máxima para o filtro (rtn= 30 Hz): ") or 30)
-        time_start = float(input("├── Tempo de início da visualização (rtn= 10 s): ") or 10)
-        time_end = float(input("├── Tempo de término da visualização (rtn=: 80 s): ") or 80)
+        freqmin = float(input("Digite a frequência mínima para o filtro (Hz): ") or 10)
+        freqmax = float(input("Digite a frequência máxima para o filtro (Hz): ") or 30)
+        time_start = float(input("Tempo de início da visualização (s): ") or 10)
+        time_end = float(input("Tempo de término da visualização (s): ") or 80)
     except ValueError:
-        print("Valores inválidos fornecidos, usando padrões.")
+        console.print("[bold red]Valores inválidos fornecidos, usando padrões.[/bold red]")
         freqmin, freqmax = 10, 30
         time_start, time_end = 10, 90
 
@@ -189,18 +196,18 @@ def ask_filter_parameters():
 
 def main():
     current_directory = os.getcwd()
-    print(f"Diretório Atual: {current_directory}\n")
+    console.print(f"[bold blue]Diretório Atual: {current_directory}[/bold blue]\n")
     
-    naval_data_directory = os.path.join(current_directory, "Data_Naval")
+    naval_data_directory = os.path.join(current_directory, "Data")
 
     options = {
         1: "Sismica Ativa",
         2: "Sismica Passiva"
     }
 
-    print("Selecione o tipo de dados sísmicos:")
+    console.print("[bold green]Selecione o tipo de dados sísmicos:[/bold green]")
     for key, value in options.items():
-        print(f"{key}: {value}")
+        console.print(f"{key}: [cyan]{value}[/cyan]")
 
     while True:
         try:
@@ -219,7 +226,7 @@ def main():
 
     if plot_choice == 1:
         cmap, fs, nfft, noverlap = ask_plot_parameters()
-        output_file = input("                 ├── Digite o nome do arquivo de saída (com extensão .png) (padrão: 'SEIS.png'): ") or 'SEIS.png'
+        output_file = input("Digite o nome do arquivo de saída (com extensão .png) (padrão: 'SEIS.png'): ") or 'SEIS.png'
         data, segy_file = read_segy_file(segy_file_path)
         plot_seismic_collage_with_spectrogram(data, traces_to_plot=[0, 1, 2, 3, 4, 5, 6], cmap=cmap, fs=fs, nfft=nfft, noverlap=noverlap, output_file=output_file)
 
@@ -228,8 +235,6 @@ def main():
         sample_rate = 24.0  
         freqmin, freqmax, time_window = ask_filter_parameters()
         plot_filtered_data_with_envelope(data[0], sample_rate, freqmin=freqmin, freqmax=freqmax, time_window=time_window)
-        
-        
 
 if __name__ == "__main__":
     main()
