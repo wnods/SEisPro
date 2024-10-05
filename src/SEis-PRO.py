@@ -9,7 +9,7 @@
 
 #-------------------------------------------------------
 # Programa de Análise e Visualização de Dados Sismicos
-# Criado por: Luiz Gabriel Magalhães Trindade.
+# Criado por: Wilson Weliton Oliveira de Souza
 #-------------------------------------------------------
 
 """
