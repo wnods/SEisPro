@@ -9,6 +9,10 @@ A Visualization of Seismic Data in SEGY. A Useful project for a quick view in Gr
 - Data analysis and comparison tools
 
 ## Examples:
+# Terminal
+<img src="plots/Captura de tela de 2024-10-14 10-50-51.png" alt="img1">
+> Terminal example
+
 
 <img src="plots/SEIS.png" alt="img1">
 > A plot of Seismic Data. 
